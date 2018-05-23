@@ -18,7 +18,18 @@ def twitter_download(url, output_dir='.', merge=True, info_only=False, **kwargs)
     if re.match(r'https?://mobile', url): # normalize mobile URL
         url = 'https://' + match1(url, r'//mobile\.(.+)')
 
-    html = get_html(url)
+    if re.match(r'https?://twitter\.com/i/moments/', url): # moments
+        html = get_html(url, faker=True)
+        paths = re.findall(r'data-permalink-path="([^"]+)"', html)
+        for path in paths:
+            twitter_download('https://twitter.com' + path,
+                             output_dir=output_dir,
+                             merge=merge,
+                             info_only=info_only,
+                             **kwargs)
+        return
+
+    html = get_html(url, faker=True)
     screen_name = r1(r'data-screen-name="([^"]*)"', html) or \
         r1(r'<meta name="twitter:title" content="([^"]*)"', html)
     item_id = r1(r'data-item-id="([^"]*)"', html) or \
@@ -58,7 +69,10 @@ def twitter_download(url, output_dir='.', merge=True, info_only=False, **kwargs)
             url = r1(r'<meta\s*property="og:video:url"\s*content="([^"]+)"', html)
             if not url:
                 url = 'https://twitter.com/i/videos/%s' % item_id
-            html = get_content(url)
+            try:
+                html = get_content(url)
+            except:
+                return
 
         data_config = r1(r'data-config="([^"]*)"', html) or \
             r1(r'data-player-config="([^"]*)"', html)
